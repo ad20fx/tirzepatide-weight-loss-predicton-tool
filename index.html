@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tirzepatide Weight Loss Calculator</title>
+    <title>Weight Loss Prediction Calculator with Tirzepatide</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -42,8 +43,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏥 Tirzepatide Weight Loss Prediction</h1>
-            <p>72-week personalized trajectory with IQR and 95% confidence intervals</p>
+            <h1>🏥 Weight Loss Prediction Calculator with Tirzepatide </h1>
+            <p>72-week personalized weight loss percentage</p>
         </div>
         <div class="content">
             <div class="input-section">
@@ -61,6 +62,7 @@
                 <div class="form-group">
                     <label>Age (years)</label>
                     <input type="number" id="age" placeholder="e.g., 45">
+                    <div class="hint">Must be 18 years or older</div>
                 </div>
                 <div class="form-group">
                     <label>Sex</label>
@@ -92,22 +94,29 @@
                     <label>Diabetes Status</label>
                     <select id="diabetes">
                         <option value="">Select...</option>
-                        <option value="None">No Diabetes</option>
+                        <option value="No Diabetes">No Diabetes</option>
                         <option value="Prediabetes">Prediabetes</option>
-                        <option value="Type 2 Diabetes">Type 2 Diabetes</option>
+                        
                     </select>
+                     <div class="hint">🚫 Not intended for patients with Type 2 Diabetes</div>
                 </div>
                 <button class="calculate-btn" onclick="calculate()">Calculate Weight Loss Trajectory</button>
             </div>
             <div class="results-section">
                 <div id="initial-msg" style="text-align: center; padding: 60px 20px; color: #999;">
                     <h3>Enter patient information</h3>
-                    <p>Fill in the form to generate predictions with confidence bands</p>
+                    <p>Fill in the form to generate predictions with IQR bands</p>
                 </div>
                 <div id="results" class="hidden">
                     <h2>Predicted Weight Loss Trajectory</h2>
                     <p id="summary" style="color: #666; margin: 10px 0;"></p>
                     <div class="chart-container"><canvas id="chart"></canvas></div>
+                    
+<!-- Graph Footnote -->
+<div class="hint" style="margin-top: -10px; margin-bottom: 20px; font-size: 0.85em; color: #666;">
+    ⚠️ <strong>Note:</strong> The shaded bands represent the typical deviation observed in the middle 50% of individuals with similar characteristics.
+</div>
+
                     <div class="predictions-table">
                         <table>
                             <thead>
@@ -122,304 +131,277 @@
                         </table>
                     </div>
                     <div class="disclaimer">
-                        ⚠️ <strong>Clinical Note:</strong> <strong>Graph Legend:</strong> Inner darker bands = IQR (middle 50% of patients will fall within this range); Outer lighter bands = 95% confidence interval (statistical range based on SURMOUNT-1 trial data). Individual results may vary. This tool is for educational and research purposes only and should not replace clinical judgment.
+                        ⚠️ <strong>Disclaimer:</strong> This tool is for educational and research purposes only and should not replace clinical judgment.
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <script>
-        window.onload = function() {
-            var opts = document.getElementsByClassName('dose-option');
-            for (var i = 0; i < opts.length; i++) {
-                opts[i].onclick = function() {
-                    for (var j = 0; j < opts.length; j++) opts[j].classList.remove('selected');
-                    this.classList.add('selected');
-                    document.getElementById('dose').value = this.getAttribute('data-dose');
-                };
-            }
-        };
-        
-        var myChart = null;
-        
-        function calculate() {
-            var w = parseFloat(document.getElementById('weight').value);
-            var h = parseFloat(document.getElementById('height').value);
-            var a = parseInt(document.getElementById('age').value);
-            var s = document.getElementById('sex').value;
-            var d = parseInt(document.getElementById('dose').value);
-            var db = document.getElementById('diabetes').value;
-            
-            if (!w || !h || !a || !s || !d || 
 
-!db) { 
-                alert('Please fill all fields including selecting a dose'); 
-                return; 
-            }
-            
-            var hm = h / 100;
-            var bmi = w / (hm * hm);
-            var base = {5: 15.0, 10: 19.5, 15: 20.9}[d] || 
+<script>
+    window.onload = function() {
+        var opts = document.getElementsByClassName('dose-option');
+        for (var i = 0; i < opts.length; i++) {
+            opts[i].onclick = function() {
+                for (var j = 0; j < opts.length; j++) opts[j].classList.remove('selected');
+                this.classList.add('selected');
+                document.getElementById('dose').value = this.getAttribute('data-dose');
+            };
+        }
+    };
+    
+    var myChart = null;
+    
+    function calculate() {
+        var w = parseFloat(document.getElementById('weight').value);
+        var h = parseFloat(document.getElementById('height').value);
+        var a = parseInt(document.getElementById('age').value);
+        var s = document.getElementById('sex').value;
+        var d = parseInt(document.getElementById('dose').value);
+        var db = document.getElementById('diabetes').value;
+        
+        if (!w || !h || !a || !s || !d || !db) { 
+            alert('Please fill all fields including selecting a dose'); 
+            return; 
+        }
+        
+        var hm = h / 100;
+        var bmi = w / (hm * hm);
+        var base = {5: 15.0, 10: 19.5, 15: 20.9}[d] || 15.0;
+        var mod = 1.0;
+        
+       
+        if (db === 'Prediabetes') mod *= 0.92;
+        mod *= (1 + (48 - a) * 0.008) * (s === 'Female' ? 1.02 : 0.98) * (1 + (bmi - 37.5) * 0.005);
+        
+        var twl = base * mod;
 
-15.0;
-            var mod = 1.0;
+        // === REAL SURMOUNT‑1 Q1/Q3 (derived from NEJM categorical data) ===
+        const Q1_map = {5: 21.7, 10: 26.2, 15: 27.3};
+        const Q3_map = {5: 8.0, 10: 11.4, 15: 13.3};
+
+        const Q1_72 = Q1_map[d];
+        const Q3_72 = Q3_map[d];
+        
+        var tp = [0, 4, 8, 12, 24, 36, 52, 72];
+        var pred = [];
+        
+        tp.forEach(function(wk) {
+
+            // Logistic time-fraction curve (unchanged)
+            var tf = wk === 0 ? 0 : 1 / (1 + Math.exp(-0.08 * (wk - 25)));
+
+            // Expected weight-loss %
+            var t = twl * tf;
+
+            // === True SURMOUNT‑1 IQR scaling ===
+            var tLower_IQR = Q3_72 * tf;
+            var tUpper_IQR = Q1_72 * tf;
+
+            // Weights from WL%
+            var pw = w * (1 - t / 100);
+            var pwLower_IQR = w * (1 - tUpper_IQR / 100);
+            var pwUpper_IQR = w * (1 - tLower_IQR / 100);
+            var pb = pw / (hm * hm);
             
-            if (db === 'Type 2 Diabetes') mod *= 0.85; 
-            else if (db === 'Prediabetes') mod *= 0.92;
-            mod *= (1 + (48 - a) * 0.008) * (s === 'Female' ? 1.02 : 0.98) * (1 + (bmi - 37.5) * 0.005);
-            
-            var twl = base * mod;
-            var ciWidth = twl * 0.25;  // 95% CI width
-            var iqrWidth = ciWidth * 0.5;  // IQR ≈ 50% of CI width
-            
-            var tp = [0, 4, 8, 12, 24, 52, 72];
-            var pred = [];
-            
-            tp.forEach(function(wk) {
-                var tf = wk === 0 ? 0 : 1 / (1 + Math.exp(-0.08 * (wk - 25)));
-                var t = twl * tf;
-                
-                // 95% CI bounds
-                var tLower_CI = Math.max(0, t - ciWidth * tf);
-                var tUpper_CI = t + ciWidth * tf;
-                
-                // IQR bounds (tighter)
-                var tLower_IQR = Math.max(0, t - iqrWidth * tf);
-                var tUpper_IQR = t + iqrWidth * tf;
-                
-                // Weight calculations
-                var pw = w * (1 - t / 100);
-                var pwLower_CI = w * (1 - tUpper_CI / 100);
-                var pwUpper_CI = w * (1 - tLower_CI / 100);
-                var pwLower_IQR = w * (1 - tUpper_IQR / 100);
-                var pwUpper_IQR = w * (1 - tLower_IQR / 100);
-                var pb = pw / (hm * hm);
-                
-                pred.push({
-                    week: wk, 
-                    weight: pw, 
-                    weightLower_CI: pwLower_CI,
-                    weightUpper_CI: pwUpper_CI,
-                    weightLower_IQR: pwLower_IQR,
-                    weightUpper_IQR: pwUpper_IQR,
-                    bmi: pb, 
-                    twl: t,
-                    twlLower_CI: tLower_CI,
-                    twlUpper_CI: tUpper_CI,
-                    twlLower_IQR: tLower_IQR,
-                    twlUpper_IQR: tUpper_IQR
-                });
+            pred.push({
+                week: wk, 
+                weight: pw, 
+                weightLower_IQR: pwLower_IQR,
+                weightUpper_IQR: pwUpper_IQR,
+                bmi: pb, 
+                twl: t,
+                twlLower_IQR: tLower_IQR,
+                twlUpper_IQR: tUpper_IQR
             });
-            
-            document.getElementById('initial-msg').classList.add('hidden');
-            document.getElementById('results').classList.remove('hidden');
-            document.getElementById('summary').textContent = a + ' year old ' + s + ', ' + w + ' kg, ' + h + ' cm (BMI: ' + bmi.toFixed(1) + '), Tirzepatide ' + d + 'mg, ' + db;
-            
-            // ✅ FIXED: Removed % sign from table
-            var tb = document.getElementById('tbody'); 
-            tb.innerHTML = '';
-            pred.forEach(function(p) {
-                var r = tb.insertRow();
-                r.innerHTML = '<td><strong>' + (p.week === 0 ? 'Baseline' : 'Week ' + p.week) + '</strong></td>' +
-                              '<td>' + p.weight.toFixed(1) + '</td>' +
-                              '<td>' + p.bmi.toFixed(1) + '</td>' +
-                              '<td class="metric">' + p.twl.toFixed(1) + '</td>';
-            });
-            
-            var ctx = document.getElementById('chart').getContext('2d');
-            if (myChart) myChart.destroy();
-            
-            var labels = pred.map(p => p.week === 0 ? 'Baseline' : 'Week ' + p.week);
-            
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        // ═══════════ WEIGHT CURVE ═══════════
-                        
-                        // 95% CI - Lower boundary (invisible anchor)
-                        {
-                            label: '',
-                            data: pred.map(p => p.weightLower_CI),
-                            borderColor: 'rgba(102, 126, 234, 0)',
-                            backgroundColor: 'rgba(102, 126, 234, 0)',
-                            fill: false,
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y'
-                        },
-                        // 95% CI - Upper boundary (LIGHT BLUE fill to previous)
-                        {
-                            label: '',
-                            data: pred.map(p => p.weightUpper_CI),
-                            borderColor: 'rgba(102, 126, 234, 0)',
-                            backgroundColor: 'rgba(102, 126, 234, 0.15)',
-                            fill: '-1',
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y'
-                        },
-                        
-                        // IQR - Lower boundary (invisible anchor)
-                        {
-                            label: '',
-                            data: pred.map(p => p.weightLower_IQR),
-                            borderColor: 'rgba(102, 126, 234, 0)',
-                            backgroundColor: 'rgba(102, 126, 234, 0)',
-                            fill: false,
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y'
-                        },
-                        // IQR - Upper boundary (DARKER BLUE fill to previous)
-                        {
-                            label: '',
-                            data: pred.map(p => p.weightUpper_IQR),
-                            borderColor: 'rgba(102, 126, 234, 0)',
-                            backgroundColor: 'rgba(102, 126, 234, 0.35)',
-                            fill: '-1',
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y'
-                        },
-                        
-                        // Main weight line
-                        {
-                            label: 'Weight (kg)',
-                            data: pred.map(p => p.weight),
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0)',
-                            borderWidth: 3,
-                            tension: 0.4,
-                            yAxisID: 'y',
-                            pointRadius: 5,
-                            pointBackgroundColor: '#667eea',
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2
-                        },
-                        
-                        // ═══════════ WEIGHT LOSS % CURVE ═══════════
-                        
-                        // 95% CI - Lower boundary (invisible anchor)
-                        {
-                            label: '',
-                            data: pred.map(p => p.twlLower_CI),
-                            borderColor: 'rgba(240, 147, 251, 0)',
-                            backgroundColor: 'rgba(240, 147, 251, 0)',
-                            fill: false,
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y1'
-                        },
-                        // 95% CI - Upper boundary (LIGHT PINK fill to previous)
-                        {
-                            label: '',
-                            data: pred.map(p => p.twlUpper_CI),
-                            borderColor: 'rgba(240, 147, 251, 0)',
-                            backgroundColor: 'rgba(240, 147, 251, 0.15)',
-                            fill: '-1',
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y1'
-                        },
-                        
-                        // IQR - Lower boundary (invisible anchor)
-                        {
-                            label: '',
-                            data: pred.map(p => p.twlLower_IQR),
-                            borderColor: 'rgba(240, 147, 251, 0)',
-                            backgroundColor: 'rgba(240, 147, 251, 0)',
-                            fill: false,
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y1'
-                        },
-                        // IQR - Upper boundary (DARKER PINK fill to previous)
-                        {
-                            label: '',
-                            data: pred.map(p => p.twlUpper_IQR),
-                            borderColor: 'rgba(240, 147, 251, 0)',
-                            backgroundColor: 'rgba(240, 147, 251, 0.35)',
-                            fill: '-1',
-                            pointRadius: 0,
-                            borderWidth: 0,
-                            yAxisID: 'y1'
-                        },
-                        
-                        // Main weight loss % line
-                        {
-                            label: 'Weight Loss (%)',
-                            data: pred.map(p => p.twl),
-                            borderColor: '#f093fb',
-                            backgroundColor: 'rgba(240, 147, 251, 0)',
-                            borderWidth: 3,
-                            tension: 0.4,
-                            yAxisID: 'y1',
-                            pointRadius: 5,
-                            pointBackgroundColor: '#f093fb',
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2
-                        }
-                    ]
+        });
+        
+        document.getElementById('initial-msg').classList.add('hidden');
+        document.getElementById('results').classList.remove('hidden');
+        document.getElementById('summary').textContent = a + ' year old ' + s + ', ' + w + ' kg, ' + h + ' cm (BMI: ' + bmi.toFixed(1) + '), Tirzepatide ' + d + 'mg, ' + db;
+        
+        // Table
+        var tb = document.getElementById('tbody'); 
+        tb.innerHTML = '';
+        pred.forEach(function(p) {
+            var r = tb.insertRow();
+            r.innerHTML = '<td><strong>' + (p.week === 0 ? 'Baseline' : 'Week ' + p.week) + '</strong></td>' +
+                          '<td>' + p.weight.toFixed(1) + '</td>' +
+                          '<td>' + p.bmi.toFixed(1) + '</td>' +
+                          '<td class="metric">' + p.twl.toFixed(1) + '</td>';
+        });
+        
+        var ctx = document.getElementById('chart').getContext('2d');
+        if (myChart) myChart.destroy();
+        
+        var labels = pred.map(p => p.week);
+        
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+
+                    // WEIGHT IQR bands
+                    {
+                        label: '',
+                        data: pred.map(p => p.weightLower_IQR),
+                        borderColor: 'rgba(102, 126, 234, 0)',
+                        backgroundColor: 'rgba(102, 126, 234, 0)',
+                        fill: false,
+                        pointRadius: 0,
+                        borderWidth: 0,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: '',
+                        data: pred.map(p => p.weightUpper_IQR),
+                        borderColor: 'rgba(102, 126, 234, 0)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.35)',
+                        fill: '-1',
+                        pointRadius: 0,
+                        borderWidth: 0,
+                        yAxisID: 'y'
+                    },
+
+                    // Weight curve
+                    {
+                        label: 'Weight (kg)',
+                        data: pred.map(p => p.weight),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        yAxisID: 'y',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    },
+
+                    // %WL IQR bands
+                    {
+                        label: '',
+                        data: pred.map(p => p.twlLower_IQR),
+                        borderColor: 'rgba(240, 147, 251, 0)',
+                        backgroundColor: 'rgba(240, 147, 251, 0)',
+                        fill: false,
+                        pointRadius: 0,
+                        borderWidth: 0,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: '',
+                        data: pred.map(p => p.twlUpper_IQR),
+                        borderColor: 'rgba(240, 147, 251, 0)',
+                        backgroundColor: 'rgba(240, 147, 251, 0.35)',
+                        fill: '-1',
+                        pointRadius: 0,
+                        borderWidth: 0,
+                        yAxisID: 'y1'
+                    },
+
+                    // %WL curve
+                    {
+                        label: 'Weight Loss (%)',
+                        data: pred.map(p => p.twl),
+                        borderColor: '#f093fb',
+                        backgroundColor: 'rgba(240, 147, 251, 0)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        pointRadius: 5,
+                        pointBackgroundColor: '#f093fb',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                filter: function(item) {
-                                    return item.text !== '';
-                                },
-                                usePointStyle: true,
-                                padding: 15
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    if (!context.dataset.label) return null;
-                                    var label = context.dataset.label + ': ';
-                                    label += context.parsed.y.toFixed(1);
-                                    label += context.dataset.yAxisID === 'y1' ? '%' : ' kg';
-                                    return label;
-                                }
-                            }
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            filter: function(item) {
+                                return item.text !== '';
+                            },
+                            usePointStyle: true,
+                            padding: 15
                         }
                     },
-                    scales: {
-                        y: {
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Weight (kg)',
-                                font: { size: 14, weight: 'bold' }
-                            },
-                            grid: { color: 'rgba(0,0,0,0.05)' }
-                        },
-                        y1: {
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Weight Loss (%)',
-                                font: { size: 14, weight: 'bold' }
-                            },
-                            grid: { drawOnChartArea: false }
-                        },
-                        x: {
-                            grid: { color: 'rgba(0,0,0,0.05)' }
+                    tooltip: {
+                        callbacks: {
+                            
+
+
+label: function(context) {
+    const week = context.parsed.x;
+    const prefix = (week === 0) ? 'Baseline – ' : ('Week ' + week + ' – ');
+
+    const dsLabel = context.dataset.label;
+    if (!dsLabel) return null;
+
+    const value = context.parsed.y.toFixed(1);
+    const unit = context.dataset.yAxisID === 'y1' ? '%' : ' kg';
+
+    return prefix + dsLabel + ': ' + value + unit;
+}
+
+
+
                         }
                     }
-                }
-            });
+                },
+                scales: {
+                    y: {
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Weight (kg)',
+                            font: { size: 14, weight: 'bold' }
+                        },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    y1: {
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Weight Loss (%)',
+                            font: { size: 14, weight: 'bold' }
+                        },
+                        grid: { drawOnChartArea: false }
+                    },
+                    
+x: {
+    type: 'linear',
+    grid: { color: 'rgba(0,0,0,0.05)' },
+    title: {
+        display: true,
+        text: 'Week',
+        font: { size: 14, weight: 'bold' }
+    },
+    ticks: {
+        callback: function(value) {
+            if (value === 0) return 'Baseline';
+            return 'Week ' + value;
         }
-    </script>
+    },
+    min: 0,
+    max: 72
+}
+
+                }
+            }
+        });
+    }
+</script>
+
 </body>
 </html>

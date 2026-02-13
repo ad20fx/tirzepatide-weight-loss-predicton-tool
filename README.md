@@ -1,42 +1,69 @@
 # **Weight Loss Prediction Calculator with Tirzepatide**
 
-A web-based calculator that predicts personalized weight loss trajectories over 72 weeks for patients using Tirzepatide, with interactive visualizations and IQR confidence bands.
+A web-based calculator that predicts personalized **weight loss trajectories over 72 weeks** for patients (adults above 18 years of age) using **Tirzepatide**, with interactive visualizations and interquartile range (IQR) confidence bands.
 
-## 🎯 **Features**
+This tool is designed for educational and research purposes to explore expected weight-loss patterns under different patient profiles and dosing strategies. 
+
+## 🎯 **Key Features**
 
 1. Personalized Predictions: Calculates weight loss based on individual patient characteristics
    
-2. Interactive Chart: Dual-axis visualization showing both weight (kg) and weight loss percentage
+2. Interactive Chart: Two interactive charts - Predicted body weight (kg) and Predicted total weight loss percentage
 
-3. IQR Confidence Bands: Displays typical variation ranges based on clinical trial data
+3. IQR Confidence Bands: Displays typical variation ranges based on typical variability observed in SURMOUNT-1 clinical trial data
 
-4. Responsive Design: Works seamlessly on desktop and mobile devices
+4. Detailed Timeline: Week-by-week predictions at key timepoints (0, 4, 8, 12, 24, 36, 52, 72 weeks)
 
-5. Real-time Updates: Instant calculations and graph generation
+5. Responsive Design: Works seamlessly on desktop and mobile devices
 
-6. Detailed Timeline: Week-by-week predictions at key timepoints (0, 4, 8, 12, 24, 36, 52, 72 weeks)
+6. Real-time Updates: Instant calculations and graph generation
+
    
-## 📊 **What It Does**
+## 📊 **What the Calculator Does**
 
-This calculator estimates weight loss trajectories for patients prescribed Tirzepatide by considering:
+This calculator estimates weight loss trajectories for adults prescribed Tirzepatide by considering:
 
-1. Current weight and height (BMI calculation)
+1. Baseline anthropometrics: Current weight and height (BMI calculation)
    
-2. Age and biological sex
+2. Demographics: Age (adults only, ≥18 years) and Biological Sex
    
 3. Tirzepatide dosage (5mg, 10mg, or 15mg)
    
-4. Diabetes status (No Diabetes or Prediabetes)
-   
-The tool uses a logistic growth model calibrated with clinical trial data to project:
+4. Glycemic status (No Diabetes or Prediabetes) [⚠️ *Patients with Type 2 Diabetes are not supported in this model.*]
 
-1. Expected weight at each timepoint
    
-2. Body Mass Index (BMI) changes
+##   🧮 Modeling Approach ##
+
+The prediction engine combines:
+
+1. Dose‑specific baseline efficacy derived from SURMOUNT-1 clinical trial data
    
-3. Percentage of total weight loss
+2. CART‑style stratification, including:
+ 
+ (i) Age threshold adjustment (>51 years)
+ 
+ (ii) BMI‑based scaling
+
+ (iii) Glycemic status stratification (No Diabetes vs Prediabetes)
+
+
+***Logistic growth curve*** to model realistic weight‑loss dynamics over time with IQR bands to represent typical inter‑individual variability
+
+
+## 📈 Model Outputs ##
+
+At each clinical timepoint, the tool provides:
+
+1. Predicted body weight (kg)
    
-4. Interquartile range (IQR) bands showing typical variation
+2. Predicted BMI (kg/m²)
+
+3. Predicted total weight loss (% from baseline)
+
+4. IQR bounds (25th–75th percentile range)
+
+5. A detailed tabular summary for all timepoints
+
    
 ## 🚀 **Getting Started**
 
@@ -58,31 +85,38 @@ No installation required! This is a standalone HTML file that runs entirely in t
 
 (iii) Age (years, 18+)
 
-(iv) Sex (Male/Female)
+(iv) Biological Sex (Male/Female)
 
 (v) Select Tirzepatide dose (5mg, 10mg, or 15mg)
 
-(vi) Diabetes status
+(vi) Glycemic status (No Diabetes or Prediabetes)
 
-Click **"Calculate Weight Loss Trajectory"**
+4. Click **"Calculate Prediction"**
 
 ### **View results:**
 
-Interactive graph and detailed table with predictions
+Interactive graph with shaded IQR bands and a detailed prediction table at each clinical timepoint.
+
 
 ### 📈 **Interpretation**
 
-#### **Graph Elements**
+#### **Weight Trajectory Chart:**
 
-1. Blue Line: Predicted weight (kg) over time
+1. Solid Blue Line: Predicted body weight (kg) over time
    
-2. Pink Line: Predicted weight loss percentage
+2. Blue dashed lines: Upper and Lower IQR bounds
 
-3. Shaded Bands: Interquartile ranges (IQR) showing where 50% of similar patients typically fall
+3. Blue Shaded region: Interquartile range (middle 50% of expected outcomes)
 
-4. Data Points: Weekly predictions at clinical trial timepoints
+   
+#### **Total Weight Trajectory Chart**
 
-5. Table Data: Each row shows
+1. Solid Pink Line: Predicted cumulative Total weight loss (%)
+   
+2. Pink dashed lines: Upper and lower IQR bounds
+
+3. Pink shaded region: Interquartile range
+
 
 (i) Timepoint: Baseline or week number
 
@@ -94,13 +128,13 @@ Interactive graph and detailed table with predictions
 
 ## ⚠️ **Important Disclaimers**
 
-*Educational Purpose Only*: This tool is for research and educational purposes
+*Educational Purpose Only*: This tool is intended for research, demonstration, and educational purposes
 
 *Not Medical Advice*: Should not replace clinical judgment or professional medical advice
 
 *Not for Type 2 Diabetes*: This calculator is not intended for patients with Type 2 Diabetes
 
-*Individual Results Vary*: Actual outcomes may differ significantly from predictions
+*Individual Results Vary*: Actual patient outcomes may differ significantly from modeled predictions
 
 *Consult Healthcare Provider*: Always discuss treatment options with a qualified healthcare professional
 

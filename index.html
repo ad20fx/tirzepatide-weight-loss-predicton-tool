@@ -243,7 +243,7 @@
         <div class="form-group">
           <label>Age (years) *</label>
           <input type="number" id="age" placeholder="e.g., 45" />
-          <div class="hint">Adults only: age must be ≥ 18 years.</div>
+          <div class="hint">Used for CART stratification (threshold: 51 years)</div>
         </div>
 
         <div class="form-group">
@@ -253,7 +253,7 @@
             <option value="Female">Female</option>
             <option value="Male">Male</option>
           </select>
-         <div class="hint"></div>
+          <div class="hint"></div>
         </div>
 
         <div class="form-group">
@@ -274,7 +274,7 @@
             <option value="None">No Diabetes</option>
             <option value="Prediabetes">Prediabetes</option>
           </select>
-          <div class="hint">Note: Type 2 diabetes patients are not supported/allowed in this tool.</div>
+          <div class="hint">Prediabetes is currently modeled same as No Diabetes (can be adjusted if you want)</div>
         </div>
 
         <button class="calculate-btn" onclick="calculate()">📊 Calculate Prediction</button>
@@ -348,9 +348,6 @@
     let weightChart = null;
     let twlChart = null;
 
-    // Fixed, non-uniform clinical timepoints
-    const TIMEPOINTS = [0, 4, 8, 12, 24, 36, 52, 72];
-
     function showResultsUI() {
       document.getElementById('results-placeholder').style.display = 'none';
       document.getElementById('results-container').style.display = 'block';
@@ -371,7 +368,7 @@
       }
       if (w < 40 || w > 300) { alert('⚠️ Please enter a valid weight between 40-300 kg'); return; }
       if (h < 120 || h > 250) { alert('⚠️ Please enter a valid height between 120-250 cm'); return; }
-      if (a < 18 || a > 80) { alert('⚠️ Please enter a valid adult age between 18-80 years'); return; }
+      if (a < 18 || a > 80) { alert('⚠️ Please enter a valid age between 18-80 years'); return; }
 
       showResultsUI();
 
@@ -391,7 +388,7 @@
       // Age branch
       if (a > 51) twl_72 *= 0.95;
 
-      // Optional: mild reduction for Prediabetes if desired (currently OFF)
+      // Optional (if you want Prediabetes to reduce efficacy slightly):
       // if (gly === 'Prediabetes') twl_72 *= 0.97;
 
       // BMI adjustment
@@ -411,9 +408,11 @@
       const q1_72 = iqrData[d].q1;
       const q3_72 = iqrData[d].q3;
 
+      // Trajectory
+      const timepoints = [0, 4, 8, 12, 24, 36, 52, 72];
       const predictions = [];
 
-      TIMEPOINTS.forEach((week) => {
+      timepoints.forEach((week) => {
         let timeFraction = 0;
         if (week > 0) timeFraction = 1 / (1 + Math.exp(-0.08 * (week - 25)));
 
@@ -487,29 +486,7 @@
       document.getElementById('table-body').innerHTML = html;
     }
 
-    // Shared X-axis config: linear scale with fixed ticks at TIMEPOINTS
-    function linearWeekAxis(titleText) {
-      return {
-        type: 'linear',
-        min: 0,
-        max: 72,
-        // Force only the clinical timepoints as ticks/gridlines
-        afterBuildTicks: (axis) => {
-          axis.ticks = TIMEPOINTS.map(v => ({ value: v }));
-        },
-        title: { display: true, text: titleText, font: { size: 14, weight: 'bold' } },
-        ticks: {
-          autoSkip: false,
-          maxRotation: 0,
-          callback: (value) => `Week ${value}`
-        },
-        grid: {
-          color: 'rgba(0,0,0,0.08)'
-        }
-      };
-    }
-
-    // ✅ Non-equidistant x-axis spacing (true numeric spacing) + blue IQR band
+    // ✅ IQR band shaded BETWEEN Lower & Upper (BLUE)
     function createWeightChart(predictions) {
       const ctx = document.getElementById('weightChart').getContext('2d');
       if (weightChart) weightChart.destroy();
@@ -520,11 +497,12 @@
       weightChart = new Chart(ctx, {
         type: 'line',
         data: {
+          labels: predictions.map(p => 'Week ' + p.week),
           datasets: [
-            // Lower IQR first (upper fills down to this)
+            // Lower first
             {
               label: 'Lower IQR (25th %ile)',
-              data: predictions.map(p => ({ x: p.week, y: p.weightLower })),
+              data: predictions.map(p => p.weightLower),
               borderColor: blue,
               borderWidth: 2,
               borderDash: [5, 5],
@@ -532,9 +510,10 @@
               fill: false,
               tension: 0.4
             },
+            // Upper fills down to lower => shaded band is the IQR
             {
               label: 'Upper IQR (75th %ile)',
-              data: predictions.map(p => ({ x: p.week, y: p.weightUpper })),
+              data: predictions.map(p => p.weightUpper),
               borderColor: blue,
               borderWidth: 2,
               borderDash: [5, 5],
@@ -543,10 +522,12 @@
               backgroundColor: blueFill,
               tension: 0.4
             },
+            // Predicted
             {
               label: 'Predicted Weight (kg)',
-              data: predictions.map(p => ({ x: p.week, y: p.weight })),
+              data: predictions.map(p => p.weight),
               borderColor: blue,
+              backgroundColor: 'rgba(102, 126, 234, 0.06)',
               borderWidth: 3,
               pointRadius: 5,
               fill: false,
@@ -556,36 +537,37 @@
         },
         options: {
           responsive: true,
-          parsing: false,
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { display: true, position: 'top' },
             tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12 }
           },
           scales: {
-            x: linearWeekAxis('Time'),
-            y: { title: { display: true, text: 'Weight (kg)', font: { size: 14, weight: 'bold' } } }
+            y: { title: { display: true, text: 'Weight (kg)', font: { size: 14, weight: 'bold' } } },
+            x: { title: { display: true, text: 'Time', font: { size: 14, weight: 'bold' } } }
           }
         }
       });
     }
 
-    // ✅ Non-equidistant x-axis spacing + pink IQR band
+    // ✅ IQR band shaded BETWEEN Lower & Upper (PINK)
     function createTWLChart(predictions) {
       const ctx = document.getElementById('twlChart').getContext('2d');
       if (twlChart) twlChart.destroy();
 
       const pink = '#ff5aa5';
       const pinkFill = 'rgba(255, 90, 165, 0.12)';
-      const predictedLine = '#764ba2';
+      const twlLine = '#764ba2'; // predicted line stays purple
 
       twlChart = new Chart(ctx, {
         type: 'line',
         data: {
+          labels: predictions.map(p => 'Week ' + p.week),
           datasets: [
+            // Lower first
             {
               label: 'Lower IQR (25th %ile)',
-              data: predictions.map(p => ({ x: p.week, y: p.twlLower })),
+              data: predictions.map(p => p.twlLower),
               borderColor: pink,
               borderWidth: 2,
               borderDash: [5, 5],
@@ -593,9 +575,10 @@
               fill: false,
               tension: 0.4
             },
+            // Upper fills down to lower => shaded band is the IQR
             {
               label: 'Upper IQR (75th %ile)',
-              data: predictions.map(p => ({ x: p.week, y: p.twlUpper })),
+              data: predictions.map(p => p.twlUpper),
               borderColor: pink,
               borderWidth: 2,
               borderDash: [5, 5],
@@ -604,10 +587,12 @@
               backgroundColor: pinkFill,
               tension: 0.4
             },
+            // Predicted
             {
               label: 'Predicted Weight Loss (%)',
-              data: predictions.map(p => ({ x: p.week, y: p.twl })),
-              borderColor: predictedLine,
+              data: predictions.map(p => p.twl),
+              borderColor: twlLine,
+              backgroundColor: 'rgba(118, 75, 162, 0.06)',
               borderWidth: 3,
               pointRadius: 5,
               fill: false,
@@ -617,15 +602,14 @@
         },
         options: {
           responsive: true,
-          parsing: false,
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { display: true, position: 'top' },
             tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12 }
           },
           scales: {
-            x: linearWeekAxis('Time'),
-            y: { title: { display: true, text: 'Total Weight Loss (%)', font: { size: 14, weight: 'bold' } } }
+            y: { title: { display: true, text: 'Total Weight Loss (%)', font: { size: 14, weight: 'bold' } } },
+            x: { title: { display: true, text: 'Time', font: { size: 14, weight: 'bold' } } }
           }
         }
       });

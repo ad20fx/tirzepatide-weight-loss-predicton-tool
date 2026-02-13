@@ -1,407 +1,635 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weight Loss Prediction Calculator with Tirzepatide</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center; }
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .content { display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; padding: 40px; }
-        .input-section { background: #f8f9fa; padding: 30px; border-radius: 15px; }
-        .form-group { margin-bottom: 25px; }
-        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 8px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
-        .hint { font-size: 0.85em; color: #666; margin-top: 5px; }
-        .dose-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-        .dose-option { padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; text-align: center; cursor: pointer; background: white; transition: all 0.3s; }
-        .dose-option:hover { border-color: #667eea; background: #f0f4ff; }
-        .dose-option.selected { border-color: #667eea; background: #667eea; color: white; }
-        .dose-option .value { font-size: 1.5em; font-weight: bold; }
-        .dose-option .label { font-size: 0.85em; opacity: 0.8; }
-        .calculate-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: 600; cursor: pointer; margin-top: 20px; }
-        .calculate-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
-        .results-section { padding: 30px; }
-        .chart-container { position: relative; height: 400px; margin: 30px 0; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .predictions-table { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-top: 30px; }
-        .predictions-table table { width: 100%; border-collapse: collapse; }
-        .predictions-table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; text-align: left; }
-        .predictions-table td { padding: 15px; border-bottom: 1px solid #e0e0e0; }
-        .predictions-table tr:hover { background: #f8f9fa; }
-        .metric { font-weight: 600; color: #667eea; }
-        .hidden { display: none; }
-        .disclaimer { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-top: 20px; border-radius: 8px; font-size: 0.9em; color: #856404; line-height: 1.6; }
-        @media (max-width: 968px) { .content { grid-template-columns: 1fr; } }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🏥 Weight Loss Prediction Calculator with Tirzepatide </h1>
-            <p>72-week personalized weight loss percentage</p>
-        </div>
-        <div class="content">
-            <div class="input-section">
-                <h2 style="margin-bottom: 25px; color: #333;">Patient Information</h2>
-                <div class="form-group">
-                    <label>Current Weight (kg)</label>
-                    <input type="number" id="weight" step="0.1" placeholder="e.g., 100">
-                    <div class="hint">Enter weight in kilograms</div>
-                </div>
-                <div class="form-group">
-                    <label>Height (cm)</label>
-                    <input type="number" id="height" step="0.1" placeholder="e.g., 175">
-                    <div class="hint">Enter height in centimeters</div>
-                </div>
-                <div class="form-group">
-                    <label>Age (years)</label>
-                    <input type="number" id="age" placeholder="e.g., 45">
-                    <div class="hint">Must be 18 years or older</div>
-                </div>
-                <div class="form-group">
-                    <label>Sex</label>
-                    <select id="sex">
-                        <option value="">Select...</option>
-                        <option value="Female">Female</option>
-                        <option value="Male">Male</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Tirzepatide Dose</label>
-                    <div class="dose-selector">
-                        <div class="dose-option" data-dose="5">
-                            <div class="value">5mg</div>
-                            <div class="label">Low</div>
-                        </div>
-                        <div class="dose-option" data-dose="10">
-                            <div class="value">10mg</div>
-                            <div class="label">Medium</div>
-                        </div>
-                        <div class="dose-option" data-dose="15">
-                            <div class="value">15mg</div>
-                            <div class="label">High</div>
-                        </div>
-                    </div>
-                    <input type="hidden" id="dose">
-                </div>
-                <div class="form-group">
-                    <label>Diabetes Status</label>
-                    <select id="diabetes">
-                        <option value="">Select...</option>
-                        <option value="No Diabetes">No Diabetes</option>
-                        <option value="Prediabetes">Prediabetes</option>
-                        
-                    </select>
-                     <div class="hint">🚫 Not intended for patients with Type 2 Diabetes</div>
-                </div>
-                <button class="calculate-btn" onclick="calculate()">Calculate Weight Loss Trajectory</button>
-            </div>
-            <div class="results-section">
-                <div id="initial-msg" style="text-align: center; padding: 60px 20px; color: #999;">
-                    <h3>Enter patient information</h3>
-                    <p>Fill in the form to generate predictions with IQR bands</p>
-                </div>
-                <div id="results" class="hidden">
-                    <h2>Predicted Weight Loss Trajectory</h2>
-                    <p id="summary" style="color: #666; margin: 10px 0;"></p>
-                    <div class="chart-container"><canvas id="chart"></canvas></div>
-                    
-<!-- Graph Footnote -->
-<div class="hint" style="margin-top: -10px; margin-bottom: 20px; font-size: 0.85em; color: #666;">
-    ⚠️ <strong>Note:</strong> The shaded bands represent the typical deviation observed in the middle 50% of individuals with similar characteristics.
-</div>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tirzepatide Weight Loss Prediction Calculator</title>
 
-                    <div class="predictions-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Timepoint</th>
-                                    <th>Weight (kg)</th>
-                                    <th>BMI (kg/m²)</th>
-                                    <th>Weight Loss (%)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody"></tbody>
-                        </table>
-                    </div>
-                    <div class="disclaimer">
-                        ⚠️ <strong>Disclaimer:</strong> This tool is for educational and research purposes only and should not replace clinical judgment.
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 { font-size: 2em; margin-bottom: 10px; }
+    .header p { opacity: 0.9; font-size: 0.95em; }
+
+    .content {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 0;
+    }
+
+    .input-section {
+      background: #f8f9fa;
+      padding: 30px;
+      border-right: 1px solid #e0e0e0;
+    }
+
+    .results-section { padding: 30px; }
+
+    .form-group { margin-bottom: 20px; }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 0.95em;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: all 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .hint { font-size: 0.85em; color: #666; margin-top: 5px; }
+
+    .calculate-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 10px;
+    }
+
+    .calculate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .calculate-btn:active { transform: translateY(0); }
+
+    .chart-container {
+      position: relative;
+      margin-bottom: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .chart-title {
+      font-size: 1.2em;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #333;
+      text-align: center;
+    }
+
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .summary-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .summary-card .value {
+      font-size: 2em;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+
+    .summary-card .label { font-size: 0.9em; opacity: 0.9; }
+
+    .prediction-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .prediction-table th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .prediction-table td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .prediction-table tr:hover { background: #f8f9fa; }
+
+    .prediction-table tr:last-child td {
+      font-weight: 600;
+      background: #f0f0f0;
+    }
+
+    .disclaimer {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      font-size: 0.9em;
+      line-height: 1.6;
+    }
+
+    .disclaimer strong { color: #856404; }
+
+    .methodology {
+      background: #e7f3ff;
+      border-left: 4px solid #2196F3;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 5px;
+      font-size: 0.9em;
+    }
+
+    .methodology h3 { color: #1976D2; margin-bottom: 10px; }
+
+    /* Hide results until user calculates */
+    #results-container { display: none; }
+
+    .placeholder {
+      background: #f5f5f5;
+      border: 2px dashed #ccc;
+      padding: 18px;
+      border-radius: 12px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 968px) {
+      .content { grid-template-columns: 1fr; }
+      .input-section {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏥 Tirzepatide Weight Loss Prediction Calculator</h1>
+      <p>CART-Based Model | 72-Week Trajectory with IQR Confidence Intervals</p>
     </div>
 
-<script>
-    window.onload = function() {
-        var opts = document.getElementsByClassName('dose-option');
-        for (var i = 0; i < opts.length; i++) {
-            opts[i].onclick = function() {
-                for (var j = 0; j < opts.length; j++) opts[j].classList.remove('selected');
-                this.classList.add('selected');
-                document.getElementById('dose').value = this.getAttribute('data-dose');
-            };
-        }
-    };
-    
-    var myChart = null;
-    
-    function calculate() {
-        var w = parseFloat(document.getElementById('weight').value);
-        var h = parseFloat(document.getElementById('height').value);
-        var a = parseInt(document.getElementById('age').value);
-        var s = document.getElementById('sex').value;
-        var d = parseInt(document.getElementById('dose').value);
-        var db = document.getElementById('diabetes').value;
-        
-        if (!w || !h || !a || !s || !d || !db) { 
-            alert('Please fill all fields including selecting a dose'); 
-            return; 
-        }
-        
-        var hm = h / 100;
-        var bmi = w / (hm * hm);
-        var base = {5: 15.0, 10: 19.5, 15: 20.9}[d] || 15.0;
-        var mod = 1.0;
-        
-       
-        if (db === 'Prediabetes') mod *= 0.92;
-        mod *= (1 + (48 - a) * 0.008) * (s === 'Female' ? 1.02 : 0.98) * (1 + (bmi - 37.5) * 0.005);
-        
-        var twl = base * mod;
+    <div class="content">
+      <div class="input-section">
+        <h2 style="margin-bottom: 20px; color: #333;">Patient Information</h2>
 
-        // === REAL SURMOUNT‑1 Q1/Q3 (derived from NEJM categorical data) ===
-        const Q1_map = {5: 21.7, 10: 26.2, 15: 27.3};
-        const Q3_map = {5: 8.0, 10: 11.4, 15: 13.3};
+        <div class="form-group">
+          <label>Weight (kg) *</label>
+          <input type="number" id="weight" placeholder="e.g., 95" step="0.1" />
+          <div class="hint">Enter current body weight in kilograms</div>
+        </div>
 
-        const Q1_72 = Q1_map[d];
-        const Q3_72 = Q3_map[d];
-        
-        var tp = [0, 4, 8, 12, 24, 36, 52, 72];
-        var pred = [];
-        
-        tp.forEach(function(wk) {
+        <div class="form-group">
+          <label>Height (cm) *</label>
+          <input type="number" id="height" placeholder="e.g., 170" step="0.1" />
+          <div class="hint">Enter height in centimeters</div>
+        </div>
 
-            // Logistic time-fraction curve (unchanged)
-            var tf = wk === 0 ? 0 : 1 / (1 + Math.exp(-0.08 * (wk - 25)));
+        <div class="form-group">
+          <label>Age (years) *</label>
+          <input type="number" id="age" placeholder="e.g., 45" />
+          <div class="hint">Adults only: age must be ≥ 18 years.</div>
+        </div>
 
-            // Expected weight-loss %
-            var t = twl * tf;
+        <div class="form-group">
+          <label>Biological Sex *</label>
+          <select id="sex">
+            <option value="" selected>Select...</option>
+            <option value="Female">Female</option>
+            <option value="Male">Male</option>
+          </select>
+          <div class="hint">Used for BMI calculation</div>
+        </div>
 
-            // === True SURMOUNT‑1 IQR scaling ===
-            var tLower_IQR = Q3_72 * tf;
-            var tUpper_IQR = Q1_72 * tf;
+        <div class="form-group">
+          <label>Tirzepatide Dose (mg) *</label>
+          <select id="dose">
+            <option value="" selected>Select dose...</option>
+            <option value="5">5 mg (Low dose)</option>
+            <option value="10">10 mg (Medium dose)</option>
+            <option value="15">15 mg (High dose)</option>
+          </select>
+          <div class="hint">Higher doses show greater efficacy</div>
+        </div>
 
-            // Weights from WL%
-            var pw = w * (1 - t / 100);
-            var pwLower_IQR = w * (1 - tUpper_IQR / 100);
-            var pwUpper_IQR = w * (1 - tLower_IQR / 100);
-            var pb = pw / (hm * hm);
-            
-            pred.push({
-                week: wk, 
-                weight: pw, 
-                weightLower_IQR: pwLower_IQR,
-                weightUpper_IQR: pwUpper_IQR,
-                bmi: pb, 
-                twl: t,
-                twlLower_IQR: tLower_IQR,
-                twlUpper_IQR: tUpper_IQR
-            });
-        });
-        
-        document.getElementById('initial-msg').classList.add('hidden');
-        document.getElementById('results').classList.remove('hidden');
-        document.getElementById('summary').textContent = a + ' year old ' + s + ', ' + w + ' kg, ' + h + ' cm (BMI: ' + bmi.toFixed(1) + '), Tirzepatide ' + d + 'mg, ' + db;
-        
-        // Table
-        var tb = document.getElementById('tbody'); 
-        tb.innerHTML = '';
-        pred.forEach(function(p) {
-            var r = tb.insertRow();
-            r.innerHTML = '<td><strong>' + (p.week === 0 ? 'Baseline' : 'Week ' + p.week) + '</strong></td>' +
-                          '<td>' + p.weight.toFixed(1) + '</td>' +
-                          '<td>' + p.bmi.toFixed(1) + '</td>' +
-                          '<td class="metric">' + p.twl.toFixed(1) + '</td>';
-        });
-        
-        var ctx = document.getElementById('chart').getContext('2d');
-        if (myChart) myChart.destroy();
-        
-        var labels = pred.map(p => p.week);
-        
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
+        <div class="form-group">
+          <label>Glycemic Status *</label>
+          <select id="glycemic">
+            <option value="" selected>Select...</option>
+            <option value="None">No Diabetes</option>
+            <option value="Prediabetes">Prediabetes</option>
+          </select>
+          <div class="hint">Note: Type 2 diabetes patients are not supported/allowed in this tool.</div>
+        </div>
 
-                    // WEIGHT IQR bands
-                    {
-                        label: '',
-                        data: pred.map(p => p.weightLower_IQR),
-                        borderColor: 'rgba(102, 126, 234, 0)',
-                        backgroundColor: 'rgba(102, 126, 234, 0)',
-                        fill: false,
-                        pointRadius: 0,
-                        borderWidth: 0,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: '',
-                        data: pred.map(p => p.weightUpper_IQR),
-                        borderColor: 'rgba(102, 126, 234, 0)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.35)',
-                        fill: '-1',
-                        pointRadius: 0,
-                        borderWidth: 0,
-                        yAxisID: 'y'
-                    },
+        <button class="calculate-btn" onclick="calculate()">📊 Calculate Prediction</button>
 
-                    // Weight curve
-                    {
-                        label: 'Weight (kg)',
-                        data: pred.map(p => p.weight),
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0)',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        yAxisID: 'y',
-                        pointRadius: 5,
-                        pointBackgroundColor: '#667eea',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2
-                    },
+        <div class="methodology">
+          <h3>🔬 CART Methodology</h3>
+          <ul style="margin-left: 20px; margin-top: 10px;">
+            <li><strong>Decision Tree Logic:</strong>
+              <ul style="margin-left: 20px; margin-top: 5px;">
+                <li>1st Split: Dose level</li>
+                <li>2nd Split: Age (≤51 vs &gt;51 years)</li>
+                <li>3rd Split: Glycemic status (No Diabetes vs Prediabetes)</li>
+              </ul>
+            </li>
+            <li><strong>IQR Bands:</strong> 25th–75th percentile (visualized as shaded band)</li>
+          </ul>
+        </div>
+      </div>
 
-                    // %WL IQR bands
-                    {
-                        label: '',
-                        data: pred.map(p => p.twlLower_IQR),
-                        borderColor: 'rgba(240, 147, 251, 0)',
-                        backgroundColor: 'rgba(240, 147, 251, 0)',
-                        fill: false,
-                        pointRadius: 0,
-                        borderWidth: 0,
-                        yAxisID: 'y1'
-                    },
-                    {
-                        label: '',
-                        data: pred.map(p => p.twlUpper_IQR),
-                        borderColor: 'rgba(240, 147, 251, 0)',
-                        backgroundColor: 'rgba(240, 147, 251, 0.35)',
-                        fill: '-1',
-                        pointRadius: 0,
-                        borderWidth: 0,
-                        yAxisID: 'y1'
-                    },
+      <div class="results-section">
+        <h2 style="margin-bottom: 20px; color: #333;">Prediction Results</h2>
 
-                    // %WL curve
-                    {
-                        label: 'Weight Loss (%)',
-                        data: pred.map(p => p.twl),
-                        borderColor: '#f093fb',
-                        backgroundColor: 'rgba(240, 147, 251, 0)',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        yAxisID: 'y1',
-                        pointRadius: 5,
-                        pointBackgroundColor: '#f093fb',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            filter: function(item) {
-                                return item.text !== '';
-                            },
-                            usePointStyle: true,
-                            padding: 15
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            
+        <div id="results-placeholder" class="placeholder">
+          Enter the patient details on the left, then click <strong>“Calculate Prediction”</strong> to view:
+          <ul style="margin-left: 18px; margin-top: 8px;">
+            <li>72-week weight trajectory with IQR shaded band</li>
+            <li>Total weight loss (%) trajectory with IQR shaded band</li>
+            <li>Detailed table at key weeks</li>
+          </ul>
+        </div>
 
+        <div id="results-container">
+          <div class="summary-cards" id="summary-cards"></div>
 
-label: function(context) {
-    const week = context.parsed.x;
-    const prefix = (week === 0) ? 'Baseline – ' : ('Week ' + week + ' – ');
+          <div id="prediction-table-container">
+            <h3 style="margin-bottom: 15px; color: #333;">📋 Detailed Predictions</h3>
+            <table class="prediction-table">
+              <thead>
+                <tr>
+                  <th>Week</th>
+                  <th>Weight (kg)</th>
+                  <th>BMI (kg/m²)</th>
+                  <th>Weight Loss (%)</th>
+                  <th>IQR Range (kg)</th>
+                </tr>
+              </thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
 
-    const dsLabel = context.dataset.label;
-    if (!dsLabel) return null;
+          <div class="chart-container">
+            <div class="chart-title">📉 Predicted Weight Trajectory (72 Weeks)</div>
+            <canvas id="weightChart"></canvas>
+          </div>
 
-    const value = context.parsed.y.toFixed(1);
-    const unit = context.dataset.yAxisID === 'y1' ? '%' : ' kg';
+          <div class="chart-container">
+            <div class="chart-title">📊 Total Weight Loss Percentage (72 Weeks)</div>
+            <canvas id="twlChart"></canvas>
+          </div>
 
-    return prefix + dsLabel + ': ' + value + unit;
-}
+          <div class="disclaimer">
+            <strong>⚠️ Important Disclaimer:</strong><br />
+            This tool is for informational purposes only and does not replace professional medical advice.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <script>
+    let weightChart = null;
+    let twlChart = null;
 
+    // Fixed, non-uniform clinical timepoints
+    const TIMEPOINTS = [0, 4, 8, 12, 24, 36, 52, 72];
 
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Weight (kg)',
-                            font: { size: 14, weight: 'bold' }
-                        },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
-                    },
-                    y1: {
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Weight Loss (%)',
-                            font: { size: 14, weight: 'bold' }
-                        },
-                        grid: { drawOnChartArea: false }
-                    },
-                    
-x: {
-    type: 'linear',
-    grid: { color: 'rgba(0,0,0,0.05)' },
-    title: {
-        display: true,
-        text: 'Week',
-        font: { size: 14, weight: 'bold' }
-    },
-    ticks: {
-        callback: function(value) {
-            if (value === 0) return 'Baseline';
-            return 'Week ' + value;
-        }
-    },
-    min: 0,
-    max: 72
-}
-
-                }
-            }
-        });
+    function showResultsUI() {
+      document.getElementById('results-placeholder').style.display = 'none';
+      document.getElementById('results-container').style.display = 'block';
     }
-</script>
 
+    function calculate() {
+      const w = parseFloat(document.getElementById('weight').value);
+      const h = parseFloat(document.getElementById('height').value);
+      const a = parseInt(document.getElementById('age').value, 10);
+      const s = document.getElementById('sex').value;
+      const d = parseInt(document.getElementById('dose').value, 10);
+      const gly = document.getElementById('glycemic').value; // None | Prediabetes
+
+      // Validation
+      if (isNaN(w) || isNaN(h) || isNaN(a) || !s || isNaN(d) || !gly) {
+        alert('⚠️ Please fill in all required fields');
+        return;
+      }
+      if (w < 40 || w > 300) { alert('⚠️ Please enter a valid weight between 40-300 kg'); return; }
+      if (h < 120 || h > 250) { alert('⚠️ Please enter a valid height between 120-250 cm'); return; }
+      if (a < 18 || a > 80) { alert('⚠️ Please enter a valid adult age between 18-80 years'); return; }
+
+      showResultsUI();
+
+      // BMI
+      const hm = h / 100;
+      const bmi = w / (hm * hm);
+
+      // Baseline TWL at 72 weeks by dose (Prediabetes treated same as None by default)
+      const baselineTWL = {
+        5:  { base: 16.0 },
+        10: { base: 20.8 },
+        15: { base: 22.2 }
+      };
+
+      let twl_72 = baselineTWL[d].base;
+
+      // Age branch
+      if (a > 51) twl_72 *= 0.95;
+
+      // Optional: mild reduction for Prediabetes if desired (currently OFF)
+      // if (gly === 'Prediabetes') twl_72 *= 0.97;
+
+      // BMI adjustment
+      const bmiReference = 37.5;
+      const bmiAdjustment = 1 + (bmi - bmiReference) * 0.004;
+      twl_72 *= bmiAdjustment;
+
+      // Bounds
+      twl_72 = Math.max(8, Math.min(twl_72, 28));
+
+      // IQR boundaries by dose
+      const iqrData = {
+        5:  { q1: 8.0,  q3: 21.7 },
+        10: { q1: 11.4, q3: 26.2 },
+        15: { q1: 13.3, q3: 27.3 }
+      };
+      const q1_72 = iqrData[d].q1;
+      const q3_72 = iqrData[d].q3;
+
+      const predictions = [];
+
+      TIMEPOINTS.forEach((week) => {
+        let timeFraction = 0;
+        if (week > 0) timeFraction = 1 / (1 + Math.exp(-0.08 * (week - 25)));
+
+        const twl = twl_72 * timeFraction;
+        const twlLower = q1_72 * timeFraction;
+        const twlUpper = q3_72 * timeFraction;
+
+        const predictedWeight = w * (1 - twl / 100);
+
+        // For weight, higher TWL => lower weight
+        const weightLower = w * (1 - twlUpper / 100); // lower bound weight
+        const weightUpper = w * (1 - twlLower / 100); // upper bound weight
+
+        const predictedBMI = predictedWeight / (hm * hm);
+
+        predictions.push({
+          week,
+          weight: predictedWeight,
+          weightLower,
+          weightUpper,
+          bmi: predictedBMI,
+          twl,
+          twlLower,
+          twlUpper
+        });
+      });
+
+      displaySummaryCards(predictions, bmi);
+      displayPredictionTable(predictions);
+      createWeightChart(predictions);
+      createTWLChart(predictions);
+    }
+
+    function displaySummaryCards(predictions, initialBMI) {
+      const final = predictions[predictions.length - 1];
+      const html = `
+        <div class="summary-card">
+          <div class="label">Initial BMI</div>
+          <div class="value">${initialBMI.toFixed(1)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Predicted BMI (72 weeks)</div>
+          <div class="value">${final.bmi.toFixed(1)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Total Weight Loss</div>
+          <div class="value">${final.twl.toFixed(1)}%</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Weight at 72 Weeks</div>
+          <div class="value">${final.weight.toFixed(1)} kg</div>
+        </div>
+      `;
+      document.getElementById('summary-cards').innerHTML = html;
+    }
+
+    function displayPredictionTable(predictions) {
+      let html = '';
+      predictions.forEach(p => {
+        const iqrRange = `${p.weightLower.toFixed(1)} - ${p.weightUpper.toFixed(1)}`;
+        html += `
+          <tr>
+            <td>${p.week}</td>
+            <td>${p.weight.toFixed(1)}</td>
+            <td>${p.bmi.toFixed(1)}</td>
+            <td>${p.twl.toFixed(1)}%</td>
+            <td>${iqrRange}</td>
+          </tr>
+        `;
+      });
+      document.getElementById('table-body').innerHTML = html;
+    }
+
+    // Shared X-axis config: linear scale with fixed ticks at TIMEPOINTS
+    function linearWeekAxis(titleText) {
+      return {
+        type: 'linear',
+        min: 0,
+        max: 72,
+        // Force only the clinical timepoints as ticks/gridlines
+        afterBuildTicks: (axis) => {
+          axis.ticks = TIMEPOINTS.map(v => ({ value: v }));
+        },
+        title: { display: true, text: titleText, font: { size: 14, weight: 'bold' } },
+        ticks: {
+          autoSkip: false,
+          maxRotation: 0,
+          callback: (value) => `Week ${value}`
+        },
+        grid: {
+          color: 'rgba(0,0,0,0.08)'
+        }
+      };
+    }
+
+    // ✅ Non-equidistant x-axis spacing (true numeric spacing) + blue IQR band
+    function createWeightChart(predictions) {
+      const ctx = document.getElementById('weightChart').getContext('2d');
+      if (weightChart) weightChart.destroy();
+
+      const blue = '#667eea';
+      const blueFill = 'rgba(102, 126, 234, 0.12)';
+
+      weightChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [
+            // Lower IQR first (upper fills down to this)
+            {
+              label: 'Lower IQR (25th %ile)',
+              data: predictions.map(p => ({ x: p.week, y: p.weightLower })),
+              borderColor: blue,
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: false,
+              tension: 0.4
+            },
+            {
+              label: 'Upper IQR (75th %ile)',
+              data: predictions.map(p => ({ x: p.week, y: p.weightUpper })),
+              borderColor: blue,
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: '-1',
+              backgroundColor: blueFill,
+              tension: 0.4
+            },
+            {
+              label: 'Predicted Weight (kg)',
+              data: predictions.map(p => ({ x: p.week, y: p.weight })),
+              borderColor: blue,
+              borderWidth: 3,
+              pointRadius: 5,
+              fill: false,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          parsing: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12 }
+          },
+          scales: {
+            x: linearWeekAxis('Time'),
+            y: { title: { display: true, text: 'Weight (kg)', font: { size: 14, weight: 'bold' } } }
+          }
+        }
+      });
+    }
+
+    // ✅ Non-equidistant x-axis spacing + pink IQR band
+    function createTWLChart(predictions) {
+      const ctx = document.getElementById('twlChart').getContext('2d');
+      if (twlChart) twlChart.destroy();
+
+      const pink = '#ff5aa5';
+      const pinkFill = 'rgba(255, 90, 165, 0.12)';
+      const predictedLine = '#764ba2';
+
+      twlChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: 'Lower IQR (25th %ile)',
+              data: predictions.map(p => ({ x: p.week, y: p.twlLower })),
+              borderColor: pink,
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: false,
+              tension: 0.4
+            },
+            {
+              label: 'Upper IQR (75th %ile)',
+              data: predictions.map(p => ({ x: p.week, y: p.twlUpper })),
+              borderColor: pink,
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: '-1',
+              backgroundColor: pinkFill,
+              tension: 0.4
+            },
+            {
+              label: 'Predicted Weight Loss (%)',
+              data: predictions.map(p => ({ x: p.week, y: p.twl })),
+              borderColor: predictedLine,
+              borderWidth: 3,
+              pointRadius: 5,
+              fill: false,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          parsing: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12 }
+          },
+          scales: {
+            x: linearWeekAxis('Time'),
+            y: { title: { display: true, text: 'Total Weight Loss (%)', font: { size: 14, weight: 'bold' } } }
+          }
+        }
+      });
+    }
+  </script>
 </body>
 </html>
